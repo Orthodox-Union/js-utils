@@ -1,6 +1,5 @@
 node_modules
 git-crypt.exe
-dist
 .env
 .vscode/*
 !.vscode/tasks.json
