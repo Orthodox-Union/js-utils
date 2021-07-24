@@ -2,7 +2,7 @@
   "name": "js-utils",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "lint": "eslint --fix --ext \".ts\" --ignore-path .gitignore ./src/**/*.ts",
     "build": "tsc"
