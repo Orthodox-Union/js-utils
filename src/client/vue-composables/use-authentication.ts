@@ -1,4 +1,4 @@
-import { ref, Ref, inject } from 'vue'
+import { ref, Ref } from 'vue'
 import { Router } from 'vue-router'
 import oidcClient, { User, UserManagerSettings } from 'oidc-client'
 
@@ -29,11 +29,12 @@ const settings: UserManagerSettings = {
 
 const userManager = new oidcClient.UserManager(settings)
 userManager.events.addUserLoaded((user) => {
-  const router: Router | undefined = inject(routerInjectionSymbol)
+  // @ts-expect-error ts doesn't allow using symbols to store data in the global window object
+  const router: Router | undefined = window[routerInjectionSymbol]
   if (!router) {
     throw new Error(
       `Router wasn't provided using 'routerInjectionSymbol' from this module. 
-      Please, call 'provide(routerInjectionSymbol, router)' in your vue main.ts file`
+      Please, call 'window[routerInjectionSymbol] = router' in your vue main.ts file`
     )
   }
   oktaUser.value = user

@@ -30,10 +30,11 @@ const settings = {
 };
 const userManager = new oidc_client_1.default.UserManager(settings);
 userManager.events.addUserLoaded((user) => {
-    const router = vue_1.inject(exports.routerInjectionSymbol);
+    // @ts-expect-error ts doesn't allow using symbols to store data in the global window object
+    const router = window[exports.routerInjectionSymbol];
     if (!router) {
         throw new Error(`Router wasn't provided using 'routerInjectionSymbol' from this module. 
-      Please, call 'provide(routerInjectionSymbol, router)' in your vue main.ts file`);
+      Please, call 'window[routerInjectionSymbol] = router' in your vue main.ts file`);
     }
     oktaUser.value = user;
     const desiredUrl = user.state;
