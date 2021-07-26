@@ -1,6 +1,6 @@
 import { Response } from 'express'
 
-const sendResponse = (res: Response, data: unknown): void => {
+const sendResponse = <Data extends unknown>(res: Response, data: Data): void => {
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(data))
 }
