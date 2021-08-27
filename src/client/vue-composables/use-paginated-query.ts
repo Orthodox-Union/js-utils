@@ -3,7 +3,7 @@ import { useQuery, UseQueryOptions } from '@vue/apollo-composable'
 import { computed, ComputedRef, ref, Ref, watch } from 'vue'
 import isEqual from 'lodash/isEqual'
 
-type SortOrder = 'asc' | 'desc'
+type SortOrder = 'Asc' | 'Desc'
 
 type NonUndefinedDeep<T> = T extends Record<string, unknown>
   ? { [key in keyof T]-?: NonUndefinedDeep<T[key]> }
