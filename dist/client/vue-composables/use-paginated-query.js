@@ -6,11 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const apollo_composable_1 = require("@vue/apollo-composable");
 const vue_1 = require("vue");
 const isEqual_1 = __importDefault(require("lodash/isEqual"));
-var SortOrder;
-(function (SortOrder) {
-    SortOrder["Asc"] = "asc";
-    SortOrder["Desc"] = "desc";
-})(SortOrder || (SortOrder = {}));
 const usePaginatedQuery = (queryDocument, defaultVariables, options) => {
     const defaultOptions = {
         fetchPolicy: 'network-only'

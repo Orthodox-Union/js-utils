@@ -1,10 +1,7 @@
 import { DocumentNode } from 'graphql';
 import { UseQueryOptions } from '@vue/apollo-composable';
 import { ComputedRef, Ref } from 'vue';
-declare enum SortOrder {
-    Asc = "asc",
-    Desc = "desc"
-}
+declare type SortOrder = 'asc' | 'desc';
 declare type NonUndefinedDeep<T> = T extends Record<string, unknown> ? {
     [key in keyof T]-?: NonUndefinedDeep<T[key]>;
 } : T extends undefined ? never : T;
