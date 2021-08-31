@@ -100,7 +100,12 @@ const usePaginatedQuery = <
     }
   }
 
-  return { variables, loading, records, total, pageTo }
+  const onKendoPageChange = (event: { page: { skip: number; take: number } }) => {
+    variables.value.limit = event.page.take
+    variables.value.offset = event.page.skip
+  }
+
+  return { variables, loading, records, total, pageTo, onKendoPageChange }
 }
 
 export default usePaginatedQuery

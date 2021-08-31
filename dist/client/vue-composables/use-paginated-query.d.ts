@@ -40,5 +40,11 @@ declare const usePaginatedQuery: <Query, Variables extends {
     records: ComputedRef<Entity[]>;
     total: ComputedRef<number>;
     pageTo: (direction: -1 | 1) => void;
+    onKendoPageChange: (event: {
+        page: {
+            skip: number;
+            take: number;
+        };
+    }) => void;
 };
 export default usePaginatedQuery;

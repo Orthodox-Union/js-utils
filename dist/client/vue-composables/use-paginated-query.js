@@ -46,6 +46,10 @@ const usePaginatedQuery = (queryDocument, defaultVariables, options) => {
             variables.value.offset -= variables.value.limit;
         }
     };
-    return { variables, loading, records, total, pageTo };
+    const onKendoPageChange = (event) => {
+        variables.value.limit = event.page.take;
+        variables.value.offset = event.page.skip;
+    };
+    return { variables, loading, records, total, pageTo, onKendoPageChange };
 };
 exports.default = usePaginatedQuery;
