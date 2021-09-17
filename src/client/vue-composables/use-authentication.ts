@@ -2,52 +2,64 @@ import { ref, Ref } from 'vue'
 import { Router } from 'vue-router'
 import oidcClient, { User, UserManagerSettings } from 'oidc-client'
 
-const client_id = process.env.VUE_APP_OIDC_CLIENT_ID
-if (!client_id) throw new Error(`VUE_APP_OIDC_CLIENT_ID should be present in process.env`)
-
 export const routerInjectionSymbol = Symbol('router')
 
 const oktaUser: Ref<User | null> = ref(null)
 
 oidcClient.Log.logger = console
-const protocol = window.location.protocol
-const hostname = window.location.hostname
-const port = window.location.port
-const settings: UserManagerSettings = {
-  authority: 'https://ou.okta.com',
-  client_id,
-  redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/callback`,
-  silent_redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/silent-renew`,
-  post_logout_redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/`,
-  automaticSilentRenew: true,
-  response_type: 'id_token token',
-  scope: 'openid profile email',
-  userStore: new oidcClient.WebStorageStateStore({
-    store: window.localStorage
+
+let userManager: oidcClient.UserManager | null = null
+
+export const setupAuthentication = (clientID: unknown) => {
+  if (userManager) {
+    throw new Error('The oidc client is already initialized')
+  }
+  if (!clientID || typeof clientID !== 'string') {
+    throw new Error('OIDC client ID should be provided when setting up oidc client')
+  }
+
+  const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const port = window.location.port
+  const settings: UserManagerSettings = {
+    authority: 'https://ou.okta.com',
+    client_id: clientID,
+    redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/callback`,
+    silent_redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/silent-renew`,
+    post_logout_redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/`,
+    automaticSilentRenew: true,
+    response_type: 'id_token token',
+    scope: 'openid profile email',
+    userStore: new oidcClient.WebStorageStateStore({
+      store: window.localStorage
+    })
+  }
+  userManager = new oidcClient.UserManager(settings)
+  userManager.events.addUserLoaded((user) => {
+    // @ts-expect-error ts doesn't allow using symbols to store data in the global window object
+    const router: Router | undefined = window[routerInjectionSymbol]
+    if (!router) {
+      throw new Error(
+        `Router wasn't provided using 'routerInjectionSymbol' from this module. 
+        Please, call 'window[routerInjectionSymbol] = router' in your vue main.ts file`
+      )
+    }
+    oktaUser.value = user
+    const desiredUrl: string | undefined = user.state
+    const currentURL = window.location.pathname
+    if (desiredUrl && desiredUrl !== currentURL) {
+      router.push(desiredUrl)
+    }
   })
 }
 
-const userManager = new oidcClient.UserManager(settings)
-userManager.events.addUserLoaded((user) => {
-  // @ts-expect-error ts doesn't allow using symbols to store data in the global window object
-  const router: Router | undefined = window[routerInjectionSymbol]
-  if (!router) {
-    throw new Error(
-      `Router wasn't provided using 'routerInjectionSymbol' from this module. 
-      Please, call 'window[routerInjectionSymbol] = router' in your vue main.ts file`
-    )
-  }
-  oktaUser.value = user
-  const desiredUrl: string | undefined = user.state
-  const currentURL = window.location.pathname
-  if (desiredUrl && desiredUrl !== currentURL) {
-    router.push(desiredUrl)
-  }
-})
-
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 const useAuthentication = () => {
+  if (!userManager) {
+    throw new Error('User manager is not initialized. Please, call setupAuthentication first')
+  }
   const login = async (currentUrl: string) => {
+    if (!userManager) return
     if (currentUrl === '/silent-renew') {
       await userManager.signinSilentCallback()
       return
@@ -68,6 +80,7 @@ const useAuthentication = () => {
   }
 
   const onLogout = async () => {
+    if (!userManager) return
     oktaUser.value = null
     await userManager.signoutRedirect()
   }
