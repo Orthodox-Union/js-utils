@@ -5,8 +5,8 @@ import sendErrors from './send-errors'
 type ParsedParameters = Record<string, string | number | Array<string | number>>
 
 const parseNumber = (value: string): string | number => {
-  const isNumber = /^\d+$/.test(value)
-  return isNumber ? parseInt(value) : value
+  const isNumber = value === parseFloat(value).toString()
+  return isNumber ? parseFloat(value) : value
 }
 
 const parseQueryParameters = <
