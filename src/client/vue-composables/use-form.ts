@@ -1,4 +1,4 @@
-import { computed, Ref, ref } from 'vue'
+import { computed, Ref, ref, ComputedRef } from 'vue'
 import cloneDeep from 'lodash/cloneDeep'
 import { ZodObject, ZodTypeAny, ZodEffects } from 'zod'
 import useToasted from './use-toasted'
@@ -63,7 +63,7 @@ const useForm = <
 >(
   schema: Schema,
   defaultForm: Form,
-  processing: Ref<boolean>,
+  processing: Ref<boolean> | ComputedRef<boolean>,
   onSubmit: (form: ValidForm) => Promise<void>,
   clearAfterSubmit = false
 ) => {
