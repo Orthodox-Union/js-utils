@@ -1,13 +1,26 @@
 import { computed, Ref, ref } from 'vue'
 import cloneDeep from 'lodash/cloneDeep'
-import { ZodObject, ZodTypeAny } from 'zod'
+import { ZodObject, ZodTypeAny, ZodEffects } from 'zod'
 import useToasted from './use-toasted'
+
+type ZodEffectsUnion<T extends ZodTypeAny> =
+  | T
+  | ZodEffects<T>
+  | ZodEffects<ZodEffects<T>>
+  | ZodEffects<ZodEffects<ZodEffects<T>>>
+  | ZodEffects<ZodEffects<ZodEffects<ZodEffects<T>>>>
+  | ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<T>>>>>
+  | ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<T>>>>>>
+  | ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<T>>>>>>>
 
 export type Nullable<T> = {
   [key in keyof T]: T[key] extends Array<infer val> ? Nullable<val>[] : T[key] | null
 }
 
-type GetZodErrors = <Shape extends Record<string, ZodTypeAny>, Schema extends ZodObject<Shape>>(
+type GetZodErrors = <
+  Shape extends Record<string, ZodTypeAny>,
+  Schema extends ZodEffectsUnion<ZodObject<Shape>>
+>(
   schema: Schema,
   form: Record<string, unknown>
 ) => Partial<Record<keyof ReturnType<Schema['parse']>, string[]>>
@@ -22,7 +35,7 @@ export const getZodErrors: GetZodErrors = (schema, form) => {
 
 export const getZodListError = <
   Shape extends Record<string, ZodTypeAny>,
-  Schema extends ZodObject<Shape>,
+  Schema extends ZodEffectsUnion<ZodObject<Shape>>,
   ValidForm extends ReturnType<Schema['parse']>,
   ListKey extends keyof ValidForm,
   InnerKey extends keyof ValidForm[ListKey][number]
@@ -44,7 +57,7 @@ export const getZodListError = <
 
 const useForm = <
   Shape extends Record<string, ZodTypeAny>,
-  Schema extends ZodObject<Shape>,
+  Schema extends ZodEffectsUnion<ZodObject<Shape>>,
   ValidForm extends ReturnType<Schema['parse']>,
   Form extends Nullable<ValidForm>
 >(
