@@ -40,7 +40,7 @@ const useRequest = <D extends DefaultData, Schema extends ZodTypeAny>(
     const axiosConfig: AxiosRequestConfig = {
       method: params.method,
       url: `${baseUrl}${endpoint.replace(/^\//g, '')}${getURLParams(data, params.method)}`,
-      data,
+      data: params.method === 'GET' ? undefined : data,
       responseType: 'json',
       headers: {
         ...getDefaultHeaders(),
