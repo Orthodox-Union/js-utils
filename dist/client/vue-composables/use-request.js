@@ -27,7 +27,7 @@ const useRequest = (params) => {
         const axiosConfig = {
             method: params.method,
             url: `${baseUrl}${endpoint.replace(/^\//g, '')}${use_immediate_request_1.getURLParams(data, params.method)}`,
-            data,
+            data: params.method === 'GET' ? undefined : data,
             responseType: 'json',
             headers: {
                 ...use_immediate_request_1.getDefaultHeaders(),
