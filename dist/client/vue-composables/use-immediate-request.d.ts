@@ -8,6 +8,8 @@ declare type Params<Data extends DefaultData, Response extends ZodTypeAny> = {
     method?: AxiosRequestConfig['method'];
     responseSchema: Response;
     data: Data;
+    customAPIUrl?: string;
+    requireAuthentication: boolean;
 };
 declare type Request<Data extends DefaultData, Result> = {
     result: Ref<Result | null>;
@@ -16,5 +18,6 @@ declare type Request<Data extends DefaultData, Result> = {
     variables: Ref<Data>;
 };
 export declare const getDefaultHeaders: () => Record<string, string>;
+export declare const getAuthenticationHeader: () => Record<string, string>;
 declare const useImmediateRequest: <D extends DefaultData, Schema extends ZodTypeAny>(params: Params<D, Schema>) => Request<D, ReturnType<Schema["parse"]>>;
 export default useImmediateRequest;

@@ -31,6 +31,7 @@ const useRequest = (params) => {
             responseType: 'json',
             headers: {
                 ...use_immediate_request_1.getDefaultHeaders(),
+                ...(params.requireAuthentication ? use_immediate_request_1.getAuthenticationHeader() : {}),
                 ...((_a = params.customHeaders) !== null && _a !== void 0 ? _a : {})
             }
         };

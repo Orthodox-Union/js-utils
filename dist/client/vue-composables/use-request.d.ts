@@ -8,6 +8,7 @@ declare type Params<Response extends ZodTypeAny> = {
     customAPIUrl?: string;
     cacheKey?: string;
     customHeaders?: Record<string, string>;
+    requireAuthentication: boolean;
 };
 declare type Request<Data extends DefaultData, Result> = {
     result: Ref<Result | null>;

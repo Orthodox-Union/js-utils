@@ -1,7 +1,7 @@
 import { ref, Ref } from 'vue'
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import { ZodTypeAny } from 'zod'
-import { getDefaultHeaders, getURLParams } from './use-immediate-request'
+import { getDefaultHeaders, getURLParams, getAuthenticationHeader } from './use-immediate-request'
 
 const cachedResults: Record<string, Record<string, any>> = {}
 
@@ -12,6 +12,7 @@ type Params<Response extends ZodTypeAny> = {
   customAPIUrl?: string
   cacheKey?: string
   customHeaders?: Record<string, string>
+  requireAuthentication: boolean
 }
 type Request<Data extends DefaultData, Result> = {
   result: Ref<Result | null>
@@ -44,6 +45,7 @@ const useRequest = <D extends DefaultData, Schema extends ZodTypeAny>(
       responseType: 'json',
       headers: {
         ...getDefaultHeaders(),
+        ...(params.requireAuthentication ? getAuthenticationHeader() : {}),
         ...(params.customHeaders ?? {})
       }
     }

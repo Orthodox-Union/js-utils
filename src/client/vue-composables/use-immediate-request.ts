@@ -23,6 +23,8 @@ type Params<Data extends DefaultData, Response extends ZodTypeAny> = {
   method?: AxiosRequestConfig['method']
   responseSchema: Response
   data: Data
+  customAPIUrl?: string
+  requireAuthentication: boolean
 }
 type Request<Data extends DefaultData, Result> = {
   result: Ref<Result | null>
@@ -32,11 +34,16 @@ type Request<Data extends DefaultData, Result> = {
 }
 
 export const getDefaultHeaders = (): Record<string, string> => {
-  const { oktaUser } = useAuthentication()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   }
+  return headers
+}
+
+export const getAuthenticationHeader = (): Record<string, string> => {
+  const { oktaUser } = useAuthentication()
   const oktaToken = oktaUser.value?.access_token ?? ''
+  const headers: Record<string, string> = {}
   if (oktaToken) headers.Authorization = `Bearer ${oktaToken}`
   return headers
 }
@@ -46,7 +53,7 @@ const useImmediateRequest = <D extends DefaultData, Schema extends ZodTypeAny>(
 ): Request<D, ReturnType<Schema['parse']>> => {
   // @ts-expect-error it has something to do with unwrapping refs, that breaks ts here
   const variables: Ref<D> = ref(params.data)
-  const baseUrl: string | undefined = process.env.VUE_APP_API_URL
+  const baseUrl: string = params.customAPIUrl ?? `${process.env.VUE_APP_API_URL}/`
   if (!baseUrl) {
     throw new Error('API URL must be provided in .env  as `VUE_APP_API_URL`')
   }
@@ -58,10 +65,13 @@ const useImmediateRequest = <D extends DefaultData, Schema extends ZodTypeAny>(
     const data = modifiedData ?? params.data
     const axiosConfig: AxiosRequestConfig = {
       method: params.method,
-      url: `${baseUrl}/${params.endpoint.replace(/^\//g, '')}${getURLParams(data, params.method)}`,
+      url: `${baseUrl}${params.endpoint.replace(/^\//g, '')}${getURLParams(data, params.method)}`,
       data,
       responseType: 'json',
-      headers: getDefaultHeaders()
+      headers: {
+        ...getDefaultHeaders(),
+        ...(params.requireAuthentication ? getAuthenticationHeader() : {}),
+      }
     }
     let response: AxiosResponse<unknown>
     try {
