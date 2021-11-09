@@ -26,7 +26,9 @@ const getZodErrors = (schema, form) => {
             return;
         const value = form[rawKey];
         if (Array.isArray(value)) {
-            fieldErrors[key] = Array(value.length).fill({});
+            fieldErrors[key] = Array(value.length)
+                .fill(0)
+                .map(() => ({}));
         }
     });
     validationResult.error.issues.forEach((issue) => {

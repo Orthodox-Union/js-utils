@@ -50,9 +50,9 @@ export const getZodErrors = <
     if (!isArray) return
     const value = form[rawKey]
     if (Array.isArray(value)) {
-      fieldErrors[key] = Array(value.length).fill({}) as ErrorsResult[keyof ReturnType<
-        Schema['parse']
-      >]
+      fieldErrors[key] = Array(value.length)
+        .fill(0)
+        .map(() => ({})) as ErrorsResult[keyof ReturnType<Schema['parse']>]
     }
   })
   validationResult.error.issues.forEach((issue) => {
