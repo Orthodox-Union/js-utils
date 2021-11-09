@@ -3,6 +3,16 @@ import cloneDeep from 'lodash/cloneDeep'
 import { ZodObject, ZodTypeAny, ZodEffects } from 'zod'
 import useToasted from './use-toasted'
 
+type Errors<Form extends Record<string, unknown>> = Partial<
+  {
+    [key in keyof Form]: Form[key] extends Array<infer val>
+      ? val extends Record<string, unknown>
+        ? Array<Errors<val>>
+        : string[]
+      : string[]
+  }
+>
+
 type ZodEffectsUnion<T extends ZodTypeAny> =
   | T
   | ZodEffects<T>
@@ -17,42 +27,47 @@ export type Nullable<T> = {
   [key in keyof T]: T[key] extends Array<infer val> ? Nullable<val>[] : T[key] | null
 }
 
-type GetZodErrors = <
+export const getZodErrors = <
   Shape extends Record<string, ZodTypeAny>,
-  Schema extends ZodEffectsUnion<ZodObject<Shape>>
+  Schema extends ZodEffectsUnion<ZodObject<Shape>>,
+  ErrorsResult extends Errors<ReturnType<Schema['parse']>>
 >(
   schema: Schema,
   form: Record<string, unknown>
-) => Partial<Record<keyof ReturnType<Schema['parse']>, string[]>>
-export const getZodErrors: GetZodErrors = (schema, form) => {
+): ErrorsResult => {
   const validationResult = schema.safeParse(form)
-  if (validationResult.success) return {}
-  return validationResult.error.formErrors.fieldErrors as Record<
-    keyof ReturnType<typeof schema['parse']>,
-    string[]
-  >
-}
-
-export const getZodListError = <
-  Shape extends Record<string, ZodTypeAny>,
-  Schema extends ZodEffectsUnion<ZodObject<Shape>>,
-  ValidForm extends ReturnType<Schema['parse']>,
-  ListKey extends keyof ValidForm,
-  InnerKey extends keyof ValidForm[ListKey][number]
->(
-  schema: Schema,
-  form: Record<string, unknown>,
-  listKey: ListKey,
-  position: number,
-  innerKey: InnerKey
-): string | null => {
-  const validationResult = schema.safeParse(form)
-  if (validationResult.success) return null
-
-  const foundError = validationResult.error.errors.find(
-    ({ path }) => path[0] === listKey && path[1] === position && path[2] === innerKey
-  )
-  return foundError ? foundError.message : null
+  if (validationResult.success) return {} as ErrorsResult
+  const fieldErrors = validationResult.error.formErrors.fieldErrors as ErrorsResult
+  if (!('shape' in schema)) return fieldErrors
+  Object.entries(schema.shape).forEach(([rawKey, info]) => {
+    const key = rawKey as keyof ReturnType<Schema['parse']>
+    if (!fieldErrors[key]) {
+      // this field (whether it's array or not) doesn't have any errors
+      // So there is no need to generate array of the potential errors
+      return
+    }
+    const isArray = info._def.typeName === 'ZodArray'
+    if (!isArray) return
+    const value = form[rawKey]
+    if (Array.isArray(value)) {
+      fieldErrors[key] = Array(value.length).fill({}) as ErrorsResult[keyof ReturnType<
+        Schema['parse']
+      >]
+    }
+  })
+  validationResult.error.issues.forEach((issue) => {
+    const [field, index, innerKey] = issue.path
+    if (typeof field === 'string' && typeof index === 'number' && typeof innerKey === 'string') {
+      const otherErrors: string[] | undefined =
+        // @ts-expect-error really difficult to specify all the proper keys here
+        fieldErrors[field][index][innerKey]
+      // @ts-expect-error really difficult to specify all the proper keys here
+      fieldErrors[field][index][innerKey] = Array.isArray(otherErrors)
+        ? [...otherErrors, issue.message]
+        : [issue.message]
+    }
+  })
+  return fieldErrors
 }
 
 const useForm = <
