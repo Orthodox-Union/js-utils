@@ -3,11 +3,37 @@ import cloneDeep from 'lodash/cloneDeep'
 import { ZodObject, ZodTypeAny, ZodEffects } from 'zod'
 import useToasted from './use-toasted'
 
+// this error type doesn't support anything deeper than 2 levels
+// so if a form has a field of arrays with objects and those objects can have array fields of its own - the type won't go as deep
+// errors will not be places in the {errors} object in the actual function implementation as well
+// an example of type with a schema is below:
+// type YourCustomForm = { // this shape is returned from yourCustomZodSchema.parse()
+//   semesters: {
+//       id: string;
+//       label: string;
+//   }[];
+//   dates: string[];
+//   semesterID: string;
+// }
+// type ErrorsForThisForm = {
+//   semesters?: {
+//       innerErrors: Partial<{ // each array element corresponsds to an actual array value from the form. So if erroneous object is with index 3, its error will be with index 3 as well
+//           id: string[];
+//           label: string[];
+//       } | undefined>[]; // undefined is used here because an array value might not be present when accessed via square brackets
+//       outerErrors: string[]; // those are regular array errors (for example, array min length or a custom refined error, that is supposed to be shown for the whole array field)
+//   } | undefined;
+//   dates?: string[] | undefined; // there is no need to store other array errors in some kind of elaborate structure
+//   semesterID?: string[] | undefined;
+// }
 type Errors<Form extends Record<string, unknown>> = Partial<
   {
-    [key in keyof Form]: Form[key] extends Array<infer val>
-      ? val extends Record<string, unknown>
-        ? Array<Errors<val>>
+    [key in keyof Form]: Form[key] extends Array<infer InnerValue>
+      ? InnerValue extends Record<string, unknown>
+        ? {
+            innerErrors: Array<Partial<{ [key in keyof InnerValue]: string[] } | undefined>>
+            outerErrors: string[]
+          }
         : string[]
       : string[]
   }
@@ -27,6 +53,63 @@ export type Nullable<T> = {
   [key in keyof T]: T[key] extends Array<infer val> ? Nullable<val>[] : T[key] | null
 }
 
+type FieldType =
+  | 'string'
+  | 'object'
+  | 'number'
+  | 'boolean'
+  | 'date'
+  | 'enum'
+  | 'stringArray'
+  | 'objectArray'
+  | 'numberArray'
+  | 'booleanArray'
+  | 'dateArray'
+  | 'enumArray'
+
+const getFieldType = <T extends ZodTypeAny>(type: T): FieldType => {
+  if (type._def.typeName === 'ZodAny') {
+    throw new Error('There is no support for `any` types')
+  }
+  if (type._def.typeName === 'ZodString') return 'string'
+  if (type._def.typeName === 'ZodDate') return 'date'
+  if (type._def.typeName === 'ZodObject') return 'object'
+  if (type._def.typeName === 'ZodNumber') return 'number'
+  if (type._def.typeName === 'ZodBoolean') return 'boolean'
+  if (type._def.typeName === 'ZodNativeEnum') return 'enum'
+  if (type._def.typeName === 'ZodNullable' || type._def.typeName === 'ZodOptional') {
+    return getFieldType(type._def.innerType)
+  }
+  if (type._def.typeName === 'ZodEffects') {
+    return getFieldType(type._def.schema)
+  }
+  if (type._def.typeName === 'ZodArray') {
+    const innerArrayType = getFieldType(type._def.type)
+    if (innerArrayType === 'number') return 'numberArray'
+    if (innerArrayType === 'string') return 'stringArray'
+    if (innerArrayType === 'object') return 'objectArray'
+    if (innerArrayType === 'boolean') return 'booleanArray'
+    if (innerArrayType === 'date') return 'dateArray'
+    if (innerArrayType === 'enum') return 'enumArray'
+    throw new Error(
+      `Use-form doesn't work with complex nested array. Found array inner type: ${innerArrayType}`
+    )
+  }
+  throw new Error(`Cannot parse this type: ${JSON.stringify(type)}`)
+}
+
+const findSchemaObject = <T extends ZodTypeAny>(
+  schema: T
+): ZodObject<Record<string, ZodTypeAny>> => {
+  if (schema._def.typeName === 'ZodObject') {
+    return schema as unknown as ZodObject<Record<string, ZodTypeAny>>
+  }
+  if (schema._def.typeName === 'ZodEffects') {
+    return findSchemaObject(schema._def.schema)
+  }
+  throw new Error('Cannot find top level object schema')
+}
+
 export const getZodErrors = <
   Shape extends Record<string, ZodTypeAny>,
   Schema extends ZodEffectsUnion<ZodObject<Shape>>,
@@ -36,36 +119,80 @@ export const getZodErrors = <
   form: Record<string, unknown>
 ): ErrorsResult => {
   const validationResult = schema.safeParse(form)
-  if (validationResult.success) return {} as ErrorsResult
-  const fieldErrors = validationResult.error.formErrors.fieldErrors as ErrorsResult
-  if (!('shape' in schema)) return fieldErrors
-  Object.entries(schema.shape).forEach(([rawKey, info]) => {
-    const key = rawKey as keyof ReturnType<Schema['parse']>
-    if (!fieldErrors[key]) {
-      // this field (whether it's array or not) doesn't have any errors
-      // So there is no need to generate array of the potential errors
+  const fieldErrors = {} as ErrorsResult
+  if (validationResult.success) return fieldErrors
+
+  const schemaObject = findSchemaObject(schema)
+  const fieldsWithNestedObjects: string[] = Object.entries(schemaObject.shape)
+    .filter(([_key, info]) => {
+      const type = getFieldType(info)
+      return type === 'objectArray'
+    })
+    .map(([key]) => key)
+
+  validationResult.error.issues.forEach((issue) => {
+    const realPath: Array<string | number | undefined> = issue.path // values might get undefined if accessed via square brackets
+    if (realPath.length > 3) {
+      throw new Error('Error handling for deeply nested entities is not implemented')
+    }
+    const [topLevelFieldRaw, possibleArrayIndex, possibleInnerKey] = realPath
+    if (
+      typeof topLevelFieldRaw === 'string' &&
+      possibleArrayIndex === undefined &&
+      possibleInnerKey === undefined
+    ) {
+      const topLevelField = topLevelFieldRaw as keyof ReturnType<Schema['parse']>
+      // top level error
+      if (fieldsWithNestedObjects.includes(topLevelFieldRaw)) {
+        // place the error in the 'outerErrors' field properly
+        if (!fieldErrors[topLevelField]) {
+          fieldErrors[topLevelField] = {
+            innerErrors: [],
+            outerErrors: []
+          } as unknown as ErrorsResult[keyof ReturnType<Schema['parse']>]
+        }
+        // @ts-expect-error ts thinks this can only be an array of strings, but it can actually be an object with inner/outer errrors
+        fieldErrors[topLevelField]?.outerErrors.push(issue.message)
+        return
+      }
+      // regular error. Push it into errors array
+      if (!fieldErrors[topLevelField]) {
+        fieldErrors[topLevelField] = [] as unknown as ErrorsResult[keyof ReturnType<
+          Schema['parse']
+        >]
+      }
+      fieldErrors[topLevelField]?.push(issue.message)
       return
     }
-    const isArray = info._def.typeName === 'ZodArray'
-    if (!isArray) return
-    const value = form[rawKey]
-    if (Array.isArray(value)) {
-      fieldErrors[key] = Array(value.length)
-        .fill(0)
-        .map(() => ({})) as ErrorsResult[keyof ReturnType<Schema['parse']>]
+    if (
+      typeof topLevelFieldRaw === 'string' &&
+      typeof possibleArrayIndex === 'number' &&
+      typeof possibleInnerKey === 'string'
+    ) {
+      // an error has occured inside of an inner object for the array
+      const topLevelField = topLevelFieldRaw as keyof ReturnType<Schema['parse']>
+      if (!fieldErrors[topLevelField]) {
+        fieldErrors[topLevelField] = {
+          innerErrors: [],
+          outerErrors: []
+        } as unknown as ErrorsResult[keyof ReturnType<Schema['parse']>]
+      }
+      // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
+      if (!fieldErrors[topLevelField]?.innerErrors[possibleArrayIndex]) {
+        // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
+        fieldErrors[topLevelField].innerErrors[possibleArrayIndex] = {
+          [possibleInnerKey]: []
+        }
+      }
+      // @ts-expect-error ts thinks this can only be an array of strings, but it can actually be an object with inner/outer errrors
+      fieldErrors[topLevelField].innerErrors[possibleArrayIndex][possibleInnerKey].push(
+        issue.message
+      )
+      return
     }
-  })
-  validationResult.error.issues.forEach((issue) => {
-    const [field, index, innerKey] = issue.path
-    if (typeof field === 'string' && typeof index === 'number' && typeof innerKey === 'string') {
-      const otherErrors: string[] | undefined =
-        // @ts-expect-error really difficult to specify all the proper keys here
-        fieldErrors[field][index][innerKey]
-      // @ts-expect-error really difficult to specify all the proper keys here
-      fieldErrors[field][index][innerKey] = Array.isArray(otherErrors)
-        ? [...otherErrors, issue.message]
-        : [issue.message]
-    }
+    throw new Error(
+      `Current errors combination is not supported. Error path: ${realPath.toString()}`
+    )
   })
   return fieldErrors
 }
