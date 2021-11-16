@@ -26,7 +26,7 @@ import useToasted from './use-toasted'
 //   dates?: string[] | undefined; // there is no need to store other array errors in some kind of elaborate structure
 //   semesterID?: string[] | undefined;
 // }
-type Errors<Form extends Record<string, unknown>> = Partial<
+export type Errors<Form extends Record<string, unknown>> = Partial<
   {
     [key in keyof Form]: Form[key] extends Array<infer InnerValue>
       ? InnerValue extends Record<string, unknown>

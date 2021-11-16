@@ -1,5 +1,13 @@
 import { Ref, ComputedRef } from 'vue';
 import { ZodObject, ZodTypeAny, ZodEffects } from 'zod';
+export declare type Errors<Form extends Record<string, unknown>> = Partial<{
+    [key in keyof Form]: Form[key] extends Array<infer InnerValue> ? InnerValue extends Record<string, unknown> ? {
+        innerErrors: Array<Partial<{
+            [key in keyof InnerValue]: string[];
+        } | undefined>>;
+        outerErrors: string[];
+    } : string[] : string[];
+}>;
 declare type ZodEffectsUnion<T extends ZodTypeAny> = T | ZodEffects<T> | ZodEffects<ZodEffects<T>> | ZodEffects<ZodEffects<ZodEffects<T>>> | ZodEffects<ZodEffects<ZodEffects<ZodEffects<T>>>> | ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<T>>>>> | ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<T>>>>>> | ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<ZodEffects<T>>>>>>>;
 export declare type Nullable<T> = {
     [key in keyof T]: T[key] extends Array<infer val> ? Nullable<val>[] : T[key] | null;
