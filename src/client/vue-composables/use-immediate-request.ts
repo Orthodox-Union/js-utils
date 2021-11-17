@@ -10,7 +10,12 @@ export const getURLParams = (
   if (!method || method === 'get' || method === 'GET') {
     const paramsList = Object.entries(variables)
       .filter((entry) => entry[1] !== undefined && entry[1] !== null)
-      .map((entry) => `${entry[0]}=${entry[1]}`)
+      .map(([key, value]) => {
+        if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') {
+          return `${key}=${encodeURIComponent(value)}`
+        }
+        throw new Error('Cannot use anything but number, string, boolean in the url params')
+      })
       .join('&')
     return paramsList === '' ? '' : `?${paramsList}`
   }
@@ -70,7 +75,7 @@ const useImmediateRequest = <D extends DefaultData, Schema extends ZodTypeAny>(
       responseType: 'json',
       headers: {
         ...getDefaultHeaders(),
-        ...(params.requireAuthentication ? getAuthenticationHeader() : {}),
+        ...(params.requireAuthentication ? getAuthenticationHeader() : {})
       }
     }
     let response: AxiosResponse<unknown>

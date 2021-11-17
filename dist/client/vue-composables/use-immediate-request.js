@@ -11,7 +11,12 @@ const getURLParams = (variables, method) => {
     if (!method || method === 'get' || method === 'GET') {
         const paramsList = Object.entries(variables)
             .filter((entry) => entry[1] !== undefined && entry[1] !== null)
-            .map((entry) => `${entry[0]}=${entry[1]}`)
+            .map(([key, value]) => {
+            if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') {
+                return `${key}=${encodeURIComponent(value)}`;
+            }
+            throw new Error('Cannot use anything but number, string, boolean in the url params');
+        })
             .join('&');
         return paramsList === '' ? '' : `?${paramsList}`;
     }
@@ -55,7 +60,7 @@ const useImmediateRequest = (params) => {
             responseType: 'json',
             headers: {
                 ...exports.getDefaultHeaders(),
-                ...(params.requireAuthentication ? exports.getAuthenticationHeader() : {}),
+                ...(params.requireAuthentication ? exports.getAuthenticationHeader() : {})
             }
         };
         let response;
