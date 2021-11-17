@@ -1,6 +1,7 @@
 import { computed, Ref, ref, ComputedRef } from 'vue'
 import cloneDeep from 'lodash/cloneDeep'
 import { ZodObject, ZodTypeAny, ZodEffects } from 'zod'
+import uniq from 'lodash/uniq'
 import useToasted from './use-toasted'
 
 // this error type doesn't support anything deeper than 2 levels
@@ -55,28 +56,42 @@ export type Nullable<T> = {
 
 type FieldType =
   | 'string'
+  | 'null'
+  | 'undefined'
   | 'object'
   | 'number'
   | 'boolean'
   | 'date'
   | 'enum'
+  | 'complexUnion'
+  | 'nullArray'
+  | 'undefinedArray'
   | 'stringArray'
   | 'objectArray'
   | 'numberArray'
   | 'booleanArray'
   | 'dateArray'
   | 'enumArray'
+  | 'complexUnionArray'
 
 const getFieldType = <T extends ZodTypeAny>(type: T): FieldType => {
   if (type._def.typeName === 'ZodAny') {
     throw new Error('There is no support for `any` types')
   }
-  if (type._def.typeName === 'ZodString') return 'string'
+  if (type._def.typeName === 'ZodNull') return 'null'
+  if (type._def.typeName === 'ZodUndefined') return 'undefined'
+  if (type._def.typeName === 'ZodString' || type._def.typeName === 'ZodLiteral') return 'string'
   if (type._def.typeName === 'ZodDate') return 'date'
   if (type._def.typeName === 'ZodObject') return 'object'
   if (type._def.typeName === 'ZodNumber') return 'number'
   if (type._def.typeName === 'ZodBoolean') return 'boolean'
   if (type._def.typeName === 'ZodNativeEnum') return 'enum'
+  if (type._def.typeName === 'ZodUnion') {
+    const options: ZodTypeAny[] = type._def.options
+    const innerTypes = options.map((option) => getFieldType(option))
+    const uniqueInnerTypes = uniq(innerTypes)
+    return uniqueInnerTypes.length === 1 ? uniqueInnerTypes[0] : 'complexUnion'
+  }
   if (type._def.typeName === 'ZodNullable' || type._def.typeName === 'ZodOptional') {
     return getFieldType(type._def.innerType)
   }
@@ -91,6 +106,9 @@ const getFieldType = <T extends ZodTypeAny>(type: T): FieldType => {
     if (innerArrayType === 'boolean') return 'booleanArray'
     if (innerArrayType === 'date') return 'dateArray'
     if (innerArrayType === 'enum') return 'enumArray'
+    if (innerArrayType === 'null') return 'nullArray'
+    if (innerArrayType === 'undefined') return 'undefinedArray'
+    if (innerArrayType === 'complexUnion') return 'complexUnionArray'
     throw new Error(
       `Use-form doesn't work with complex nested array. Found array inner type: ${innerArrayType}`
     )

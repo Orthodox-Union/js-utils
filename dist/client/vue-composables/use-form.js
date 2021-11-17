@@ -6,12 +6,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getZodErrors = void 0;
 const vue_1 = require("vue");
 const cloneDeep_1 = __importDefault(require("lodash/cloneDeep"));
+const uniq_1 = __importDefault(require("lodash/uniq"));
 const use_toasted_1 = __importDefault(require("./use-toasted"));
 const getFieldType = (type) => {
     if (type._def.typeName === 'ZodAny') {
         throw new Error('There is no support for `any` types');
     }
-    if (type._def.typeName === 'ZodString')
+    if (type._def.typeName === 'ZodNull')
+        return 'null';
+    if (type._def.typeName === 'ZodUndefined')
+        return 'undefined';
+    if (type._def.typeName === 'ZodString' || type._def.typeName === 'ZodLiteral')
         return 'string';
     if (type._def.typeName === 'ZodDate')
         return 'date';
@@ -23,6 +28,12 @@ const getFieldType = (type) => {
         return 'boolean';
     if (type._def.typeName === 'ZodNativeEnum')
         return 'enum';
+    if (type._def.typeName === 'ZodUnion') {
+        const options = type._def.options;
+        const innerTypes = options.map((option) => getFieldType(option));
+        const uniqueInnerTypes = uniq_1.default(innerTypes);
+        return uniqueInnerTypes.length === 1 ? uniqueInnerTypes[0] : 'complexUnion';
+    }
     if (type._def.typeName === 'ZodNullable' || type._def.typeName === 'ZodOptional') {
         return getFieldType(type._def.innerType);
     }
@@ -43,6 +54,12 @@ const getFieldType = (type) => {
             return 'dateArray';
         if (innerArrayType === 'enum')
             return 'enumArray';
+        if (innerArrayType === 'null')
+            return 'nullArray';
+        if (innerArrayType === 'undefined')
+            return 'undefinedArray';
+        if (innerArrayType === 'complexUnion')
+            return 'complexUnionArray';
         throw new Error(`Use-form doesn't work with complex nested array. Found array inner type: ${innerArrayType}`);
     }
     throw new Error(`Cannot parse this type: ${JSON.stringify(type)}`);
