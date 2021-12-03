@@ -198,9 +198,14 @@ export const getZodErrors = <
       // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
       if (!fieldErrors[topLevelField]?.innerErrors[possibleArrayIndex]) {
         // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
-        fieldErrors[topLevelField].innerErrors[possibleArrayIndex] = {
-          [possibleInnerKey]: []
-        }
+        fieldErrors[topLevelField].innerErrors[possibleArrayIndex] = {}
+      }
+      if (
+        // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
+        !fieldErrors[topLevelField]?.innerErrors[possibleArrayIndex][possibleInnerKey]
+      ) {
+        // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
+        fieldErrors[topLevelField].innerErrors[possibleArrayIndex][possibleInnerKey] = []
       }
       // @ts-expect-error ts thinks this can only be an array of strings, but it can actually be an object with inner/outer errrors
       fieldErrors[topLevelField].innerErrors[possibleArrayIndex][possibleInnerKey].push(

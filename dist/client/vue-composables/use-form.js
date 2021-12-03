@@ -86,7 +86,7 @@ const getZodErrors = (schema, form) => {
     })
         .map(([key]) => key);
     validationResult.error.issues.forEach((issue) => {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         const realPath = issue.path; // values might get undefined if accessed via square brackets
         if (realPath.length > 3) {
             throw new Error('Error handling for deeply nested entities is not implemented');
@@ -130,9 +130,13 @@ const getZodErrors = (schema, form) => {
             // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
             if (!((_c = fieldErrors[topLevelField]) === null || _c === void 0 ? void 0 : _c.innerErrors[possibleArrayIndex])) {
                 // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
-                fieldErrors[topLevelField].innerErrors[possibleArrayIndex] = {
-                    [possibleInnerKey]: []
-                };
+                fieldErrors[topLevelField].innerErrors[possibleArrayIndex] = {};
+            }
+            if (
+            // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
+            !((_d = fieldErrors[topLevelField]) === null || _d === void 0 ? void 0 : _d.innerErrors[possibleArrayIndex][possibleInnerKey])) {
+                // @ts-expect-error hard to check whether innerErrors object is present (instead of string[])
+                fieldErrors[topLevelField].innerErrors[possibleArrayIndex][possibleInnerKey] = [];
             }
             // @ts-expect-error ts thinks this can only be an array of strings, but it can actually be an object with inner/outer errrors
             fieldErrors[topLevelField].innerErrors[possibleArrayIndex][possibleInnerKey].push(issue.message);
