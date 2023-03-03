@@ -53,7 +53,7 @@ const usePaginatedQuery = <
 
   const variables = ref(defaultVariables) as Ref<Variables>
 
-  const { result, loading } = useQuery<
+  const { result, loading, refetch } = useQuery<
     Record<keyof Query, { records: Entity[]; total: number }>,
     Variables
   >(
@@ -105,7 +105,7 @@ const usePaginatedQuery = <
     variables.value.offset = event.page.skip
   }
 
-  return { variables, loading, records, total, pageTo, onKendoPageChange }
+  return { variables, loading, records, total, refetch, pageTo, onKendoPageChange }
 }
 
 export default usePaginatedQuery
