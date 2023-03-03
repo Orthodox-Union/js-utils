@@ -39,6 +39,7 @@ declare const usePaginatedQuery: <Query, Variables extends {
     loading: Ref<boolean>;
     records: ComputedRef<Entity[]>;
     total: ComputedRef<number>;
+    refetch: (variables?: Variables | undefined) => Promise<any> | undefined;
     pageTo: (direction: -1 | 1) => void;
     onKendoPageChange: (event: {
         page: {
