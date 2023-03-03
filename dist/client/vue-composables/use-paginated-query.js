@@ -11,7 +11,7 @@ const usePaginatedQuery = (queryDocument, defaultVariables, options) => {
         fetchPolicy: 'network-only'
     };
     const variables = vue_1.ref(defaultVariables);
-    const { result, loading } = apollo_composable_1.useQuery(queryDocument, variables, options ? () => ({ ...defaultOptions, ...options() }) : defaultOptions);
+    const { result, loading, refetch } = apollo_composable_1.useQuery(queryDocument, variables, options ? () => ({ ...defaultOptions, ...options() }) : defaultOptions);
     // For some odd reason watcher can be set on variables, but it doesn't let you access variables state before change
     // (both arguments in the callback hold current variables value)
     // So in order to reset offset, when filters change, this custom tracking of filters is required
@@ -50,6 +50,6 @@ const usePaginatedQuery = (queryDocument, defaultVariables, options) => {
         variables.value.limit = event.page.take;
         variables.value.offset = event.page.skip;
     };
-    return { variables, loading, records, total, pageTo, onKendoPageChange };
+    return { variables, loading, records, total, refetch, pageTo, onKendoPageChange };
 };
 exports.default = usePaginatedQuery;
