@@ -10,19 +10,18 @@ exports.routerInjectionSymbol = Symbol('router');
 const oktaUser = vue_1.ref(null);
 oidc_client_1.default.Log.logger = console;
 let userManager = null;
-const setupAuthentication = (clientID) => {
+const setupAuthentication = (settings) => {
     if (userManager) {
         throw new Error('The oidc client is already initialized');
     }
-    if (!clientID || typeof clientID !== 'string') {
+    if (!settings.client_id || typeof settings.client_id !== 'string') {
         throw new Error('OIDC client ID should be provided when setting up oidc client');
     }
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     const port = window.location.port;
-    const settings = {
+    const composedSettings = {
         authority: 'https://ou.okta.com',
-        client_id: clientID,
         redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/callback`,
         silent_redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/silent-renew`,
         post_logout_redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/`,
@@ -31,9 +30,10 @@ const setupAuthentication = (clientID) => {
         scope: 'openid profile email',
         userStore: new oidc_client_1.default.WebStorageStateStore({
             store: window.localStorage
-        })
+        }),
+        ...settings
     };
-    userManager = new oidc_client_1.default.UserManager(settings);
+    userManager = new oidc_client_1.default.UserManager(composedSettings);
     userManager.events.addUserLoaded((user) => {
         // @ts-expect-error ts doesn't allow using symbols to store data in the global window object
         const router = window[exports.routerInjectionSymbol];

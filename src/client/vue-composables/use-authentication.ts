@@ -10,20 +10,19 @@ oidcClient.Log.logger = console
 
 let userManager: oidcClient.UserManager | null = null
 
-export const setupAuthentication = (clientID: unknown) => {
+export const setupAuthentication = (settings: UserManagerSettings) => {
   if (userManager) {
     throw new Error('The oidc client is already initialized')
   }
-  if (!clientID || typeof clientID !== 'string') {
+  if (!settings.client_id || typeof settings.client_id !== 'string') {
     throw new Error('OIDC client ID should be provided when setting up oidc client')
   }
 
   const protocol = window.location.protocol
   const hostname = window.location.hostname
   const port = window.location.port
-  const settings: UserManagerSettings = {
+  const composedSettings: UserManagerSettings = {
     authority: 'https://ou.okta.com',
-    client_id: clientID,
     redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/callback`,
     silent_redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/silent-renew`,
     post_logout_redirect_uri: `${protocol}//${hostname}${port ? `:${port}` : ''}/`,
@@ -32,9 +31,10 @@ export const setupAuthentication = (clientID: unknown) => {
     scope: 'openid profile email',
     userStore: new oidcClient.WebStorageStateStore({
       store: window.localStorage
-    })
+    }),
+    ...settings
   }
-  userManager = new oidcClient.UserManager(settings)
+  userManager = new oidcClient.UserManager(composedSettings)
   userManager.events.addUserLoaded((user) => {
     // @ts-expect-error ts doesn't allow using symbols to store data in the global window object
     const router: Router | undefined = window[routerInjectionSymbol]
