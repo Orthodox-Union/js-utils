@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.setupConfirmationPrompt = void 0;
 const vue_1 = require("vue");
 let confirmationModalComponent = null;
-const isMounted = false;
 let setupOptions = null;
 let selectedEntity = null;
 let confirmCallbacks = [];
@@ -40,52 +39,50 @@ const useConfirmationPrompt = (options) => {
     if (!selectedEntity) {
         selectedEntity = vue_1.ref(null);
     }
-    if (!isMounted) {
-        const modalView = vue_1.defineComponent({
-            extends: confirmationModalComponent,
-            data() {
-                if (!setupOptions) {
-                    throw new Error('Setup options should be present here');
-                }
-                return {
-                    ...setupOptions,
-                    onCancel: () => {
-                        confirmCallbacks = [];
-                        resetOptions();
-                    },
-                    onConfirm: async () => {
-                        var _a;
-                        if (!setupOptions)
-                            return;
-                        const currentEntity = (_a = selectedEntity === null || selectedEntity === void 0 ? void 0 : selectedEntity.value) !== null && _a !== void 0 ? _a : null;
-                        setupOptions.processing.value = true;
-                        try {
-                            await Promise.all(confirmCallbacks.map((callback) => callback(currentEntity)));
-                        }
-                        catch {
-                            //
-                        }
-                        resetOptions();
-                        // @ts-expect-error entity type is lost here
-                        options.onConfirmed(currentEntity);
-                    }
-                };
+    const modalView = vue_1.defineComponent({
+        extends: confirmationModalComponent,
+        data() {
+            if (!setupOptions) {
+                throw new Error('Setup options should be present here');
             }
-        });
-        const div = document.createElement('div');
-        const element = document.getElementById('app');
-        if (!element) {
-            throw new Error('There is no `#app` html element');
+            return {
+                ...setupOptions,
+                onCancel: () => {
+                    confirmCallbacks = [];
+                    resetOptions();
+                },
+                onConfirm: async () => {
+                    var _a;
+                    if (!setupOptions)
+                        return;
+                    const currentEntity = (_a = selectedEntity === null || selectedEntity === void 0 ? void 0 : selectedEntity.value) !== null && _a !== void 0 ? _a : null;
+                    setupOptions.processing.value = true;
+                    try {
+                        await Promise.all(confirmCallbacks.map((callback) => callback(currentEntity)));
+                    }
+                    catch {
+                        //
+                    }
+                    resetOptions();
+                    // @ts-expect-error entity type is lost here
+                    options.onConfirmed(currentEntity);
+                }
+            };
         }
-        element.appendChild(div);
-        vue_1.createApp(modalView).mount(div);
+    });
+    const div = document.createElement('div');
+    const element = document.getElementById('app');
+    if (!element) {
+        throw new Error('There is no `#app` html element');
     }
+    element.appendChild(div);
+    vue_1.createApp(modalView).mount(div);
     const trigger = (entity) => {
         var _a, _b, _c;
         if (!setupOptions || !selectedEntity) {
             throw new Error('Setup options or entity ref are not present');
         }
-        if (setupOptions.show.value || selectedEntity.value)
+        if (setupOptions.show.value)
             return;
         setupOptions.message.value =
             typeof options.question === 'function' ? options.question(entity) : (_a = options.question) !== null && _a !== void 0 ? _a : '';
